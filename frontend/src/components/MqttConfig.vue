@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 
 const props = defineProps({
   connected: Boolean
@@ -15,6 +15,11 @@ const config = reactive({
 })
 
 const isExpanded = ref(true)
+
+const defaultHost = computed(() => {
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${proto}://${window.location.hostname}/mqtt`
+})
 
 onMounted(() => {
   const saved = localStorage.getItem('mqtt_config')
@@ -62,8 +67,8 @@ const toggleExpand = () => {
     
     <div v-if="isExpanded" class="form-body">
       <div class="form-group">
-        <label>服务器地址 (ws://...)</label>
-        <input v-model="config.host" placeholder="ws://localhost:8083/mqtt" :disabled="connected">
+        <label>服务器地址 ({{ defaultHost }})</label>
+        <input v-model="config.host" :placeholder="defaultHost" :disabled="connected">
       </div>
       <div class="form-group">
         <label>用户名</label>

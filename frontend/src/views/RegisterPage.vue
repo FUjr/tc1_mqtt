@@ -19,6 +19,12 @@ let cooldownTimer = null
 const addMacMode = ref(false)
 const addMacForm = ref({ username: '', password: '', mac: '' })
 
+// 注册/追加成功后保留数据，用于一键添加配置
+const registeredData = ref(null)   // { username, password, mac }
+const addedMacData = ref(null)     // { username, password, mac }
+const quickAddDone = ref(false)
+const quickAddMacDone = ref(false)
+
 onMounted(async () => {
   try {
     const res = await fetch('/api/register/status')
@@ -111,6 +117,8 @@ const submit = async () => {
     if (res.ok) {
       message.value = data.message || '注册成功！'
       messageType.value = 'success'
+      registeredData.value = { username: f.username.trim(), password: f.password, mac: f.mac.trim() }
+      quickAddDone.value = false
       form.value = { username: '', password: '', mac: '', code: '' }
       codeSent.value = false
     } else {
@@ -144,6 +152,8 @@ const submitAddMac = async () => {
     if (res.ok) {
       message.value = data.message || 'MAC地址已添加！'
       messageType.value = 'success'
+      addedMacData.value = { username: f.username.trim(), password: f.password, mac: f.mac.trim() }
+      quickAddMacDone.value = false
       addMacForm.value = { username: '', password: '', mac: '' }
     } else {
       message.value = data.error || '添加失败'
@@ -154,6 +164,44 @@ const submitAddMac = async () => {
   } finally {
     loading.value = false
   }
+}
+const applyQuickConfig = (data) => {
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  const host = `${proto}://${window.location.hostname}/mqtt`
+
+  const mqttConfig = {
+    host,
+    username: data.username,
+    password: data.password,
+    clientId: 'web_client_' + Math.random().toString(16).substr(2, 8)
+  }
+  localStorage.setItem('mqtt_config', JSON.stringify(mqttConfig))
+
+  const normalizedMac = data.mac.replace(/[:-]/g, '').toUpperCase()
+
+  let devices = []
+  try {
+    const saved = localStorage.getItem('ztc1_devices')
+    if (saved) devices = JSON.parse(saved)
+  } catch (e) {}
+
+  for (const version of ['v1', 'v2']) {
+    const exists = devices.find(d =>
+      d.mac.replace(/[:-]/g, '').toUpperCase() === normalizedMac && d.version === version
+    )
+    if (!exists) devices.push({ mac: normalizedMac, version })
+  }
+  localStorage.setItem('ztc1_devices', JSON.stringify(devices))
+}
+
+const doQuickAdd = () => {
+  applyQuickConfig(registeredData.value)
+  quickAddDone.value = true
+}
+
+const doQuickAddMac = () => {
+  applyQuickConfig(addedMacData.value)
+  quickAddMacDone.value = true
 }
 </script>
 
@@ -218,6 +266,12 @@ const submitAddMac = async () => {
           <input v-model="form.mac" placeholder="D0BAE4618631 或 AA:BB:CC:DD:EE:FF" maxlength="17" />
         </div>
         <div v-if="message" :class="['msg', messageType]">{{ message }}</div>
+        <div v-if="registeredData" class="quick-add-wrap">
+          <button class="quick-add-btn" @click="doQuickAdd" :disabled="quickAddDone">
+            {{ quickAddDone ? '✔ 配置已保存' : '一键添加配置' }}
+          </button>
+          <span class="quick-add-hint">自动写入服务器、用户名、v1 v2 设备到本地配置</span>
+        </div>
         <button class="submit-btn" @click="submit" :disabled="loading">
           {{ loading ? '注册中...' : '注册' }}
         </button>
@@ -246,6 +300,12 @@ const submitAddMac = async () => {
           <input v-model="addMacForm.mac" placeholder="D0BAE4618631 或 AA:BB:CC:DD:EE:FF" maxlength="17" />
         </div>
         <div v-if="message" :class="['msg', messageType]">{{ message }}</div>
+        <div v-if="addedMacData" class="quick-add-wrap">
+          <button class="quick-add-btn" @click="doQuickAddMac" :disabled="quickAddMacDone">
+            {{ quickAddMacDone ? '✔ 配置已保存' : '一键添加配置' }}
+          </button>
+          <span class="quick-add-hint">自动写入服务器、用户名、v1 v2 设备到本地配置</span>
+        </div>
         <button class="submit-btn" @click="submitAddMac" :disabled="loading">
           {{ loading ? '提交中...' : '追加 MAC' }}
         </button>
@@ -377,6 +437,27 @@ const submitAddMac = async () => {
   margin-bottom: 8px;
 }
 .contact { text-align: center; color: var(--text-secondary); font-size: 0.9em; }
+.quick-add-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.quick-add-btn {
+  padding: 9px 18px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.quick-add-btn:hover:not(:disabled) { background: #1976d2; }
+.quick-add-btn:disabled { background: #66bb6a; cursor: default; }
+.quick-add-hint { font-size: 0.82em; color: var(--text-secondary); }
 .header-bar {
   position: relative;
   display: flex;
