@@ -1,0 +1,105 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Light mode (default) */
+  --bg-body: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-hover: #f9f9f9;
+  --bg-active: #e3f2fd;
+  --bg-input: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --text-heading: #2c3e50;
+  --border-color: #dddddd;
+  --border-light: #eeeeee;
+  --shadow-color: rgba(0,0,0,0.1);
+  --card-on-bg: #f0f9f0;
+  --card-on-border: #4caf50;
+  --chip-bg: #ffffff;
+  --chip-color: #666666;
+  --chip-active-bg: #e3f2fd;
+  --chip-danger-color: #c62828;
+  --chip-danger-hover: #ffebee;
+  --overlay-bg: rgba(0,0,0,0.5);
+  --switch-bg: #e0e0e0;
+  --switch-color: #666666;
+}
+
+/* Auto mode: follow system preference */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    --bg-body: #121212;
+    --bg-card: #1e1e1e;
+    --bg-secondary: #2a2a2a;
+    --bg-hover: #333333;
+    --bg-active: #1a3a5c;
+    --bg-input: #2a2a2a;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #888888;
+    --text-heading: #e0e0e0;
+    --border-color: #444444;
+    --border-light: #333333;
+    --shadow-color: rgba(0,0,0,0.4);
+    --card-on-bg: #1a3a1a;
+    --card-on-border: #4caf50;
+    --chip-bg: #2a2a2a;
+    --chip-color: #b0b0b0;
+    --chip-active-bg: #1a3a5c;
+    --chip-danger-color: #ef9a9a;
+    --chip-danger-hover: #3a1a1a;
+    --overlay-bg: rgba(0,0,0,0.7);
+    --switch-bg: #444444;
+    --switch-color: #b0b0b0;
+  }
+}
+
+/* Forced dark mode */
+html.dark {
+  --bg-body: #121212;
+  --bg-card: #1e1e1e;
+  --bg-secondary: #2a2a2a;
+  --bg-hover: #333333;
+  --bg-active: #1a3a5c;
+  --bg-input: #2a2a2a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #888888;
+  --text-heading: #e0e0e0;
+  --border-color: #444444;
+  --border-light: #333333;
+  --shadow-color: rgba(0,0,0,0.4);
+  --card-on-bg: #1a3a1a;
+  --card-on-border: #4caf50;
+  --chip-bg: #2a2a2a;
+  --chip-color: #b0b0b0;
+  --chip-active-bg: #1a3a5c;
+  --chip-danger-color: #ef9a9a;
+  --chip-danger-hover: #3a1a1a;
+  --overlay-bg: rgba(0,0,0,0.7);
+  --switch-bg: #444444;
+  --switch-color: #b0b0b0;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+}

@@ -1,0 +1,37 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      # 9001 仅供内部 nginx 反代，不对外暴露
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  backend:
+    image: registry.cn-hangzhou.aliyuncs.com/fjrcn/mqtt-mgr-backend:latest
+    container_name: mqtt-mgr-backend
+    restart: unless-stopped
+    volumes:
+      # 配置文件
+      - ./backend/config.yaml:/app/config.yaml
+      # 宿主机 passwd/acl 挂载进容器，供后端读写
+      - ./mosquitto/config/passwd:/data/passwd
+      - ./mosquitto/config/acl:/data/acl
+      # Docker socket，用于 docker exec mosquitto_passwd
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mosquitto
+
+  nginx:
+    image: registry.cn-hangzhou.aliyuncs.com/fjrcn/mqtt-mgr-nginx:latest
+    container_name: mqtt-mgr-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - mosquitto
