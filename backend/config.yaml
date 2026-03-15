@@ -17,7 +17,7 @@ admin_password: "admin123"
 #   0 = 禁止注册
 #   1 = 任意注册
 #   2 = 仅邮箱注册（需邮箱验证码激活）
-register_level: 2
+register_level: 1
 
 # 联系维护者信息（显示在注册页）
 contact_info: "如需帮助请联系管理员"

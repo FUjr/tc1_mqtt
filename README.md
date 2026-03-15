@@ -115,6 +115,7 @@ docker compose up -d --build
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/api/ping` | 健康检查，WAF 拦截探测用 |
 | GET | `/api/register/status` | 是否开放注册 |
 | POST | `/api/register` | 用户注册 |
 | POST | `/api/admin/login` | 管理员登录，返回 Token |
@@ -136,3 +137,26 @@ go run .
 cd frontend
 npm run dev
 ```
+
+## WAF 配置说明
+
+若在 nginx 前部署了 WAF（如雷池 SafeLine、Cloudflare 等）并对路径启用了人机认证，需注意以下事项：
+
+### 问题背景
+
+Vue 使用 History 路由模式，前端页面切换（如直接进入 `/register`）不会发出新的 HTTP 请求，WAF 无法感知到路径变化，因此**不会触发人机认证**。
+
+### 解决方案
+
+本项目在应用启动时会自动调用 `GET /api/ping`。当 WAF 拦截该请求（返回非 200，或连接被阻断）时，前端会自动执行 `window.location.href = '/register'`，触发一次真实的浏览器跳转，从而让 WAF 完成人机验证。
+
+### WAF 规则配置建议
+
+| 防护路径 | 说明 |
+|----------|------|
+| `/register` | 用户注册页（兜底触发验证页） |
+| `/api` | 所有后端 API，含 `/api/ping` |
+
+两个路径都需要纳入 WAF 防护，**缺一不可**：
+- `/api` 被 WAF 拦截 → 前端探测到 → 跳转 `/register`
+- `/register` 触发人机认证 → 通过后 WAF 放行 Cookie → 后续 `/api` 请求正常

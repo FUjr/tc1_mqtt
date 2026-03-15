@@ -33,6 +33,19 @@ type Config struct {
 
 var cfg Config
 
+func safeReturnTo(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if raw[0] != '/' {
+		return ""
+	}
+	if len(raw) > 1 && raw[1] == '/' {
+		return ""
+	}
+	return raw
+}
+
 func loadConfig(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -70,6 +83,16 @@ func main() {
 	mux.HandleFunc("/api/admin/acl", adminAuth(handleACL))
 	mux.HandleFunc("/api/admin/config", adminAuth(handleConfig))
 	mux.HandleFunc("/api/register/status", handleRegisterStatus)
+	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
+		if returnTo := safeReturnTo(r.URL.Query().Get("return_to")); returnTo != "" {
+			http.Redirect(w, r, returnTo, http.StatusFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ok":true}`))
+	})
 
 	// 前端静态文件
 	fs := http.FileServer(http.Dir("../frontend/dist"))
