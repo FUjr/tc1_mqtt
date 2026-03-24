@@ -55,11 +55,25 @@ const editingPlug = ref(-1)
 const tempName = ref('')
 const remarks = reactive({}) // Local remarks storage
 
-onMounted(() => {
+// Load remarks from localStorage
+const loadRemarks = () => {
+  // Clear previous remarks
+  Object.keys(remarks).forEach(key => delete remarks[key])
+  
   const saved = localStorage.getItem(`ztc1_remarks_${props.device.mac}`)
   if (saved) {
     Object.assign(remarks, JSON.parse(saved))
   }
+}
+
+// Watch for device changes to reload remarks
+watch(() => props.device.mac, () => {
+  loadRemarks()
+  editingPlug.value = -1 // Reset editing state when switching devices
+})
+
+onMounted(() => {
+  loadRemarks()
   
   if (!isV2.value) {
     // Query status for locks (v1 only)
