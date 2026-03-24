@@ -446,14 +446,31 @@ body {
     justify-content: center;
     align-items: center;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 .header-actions {
-    position: absolute;
-    right: 0;
     display: flex;
     gap: 4px;
     align-items: center;
     z-index: 1;
+}
+
+/* Mobile: header wraps to separate line */
+@media (max-width: 600px) {
+  .header-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-bar h1 {
+    order: 1;
+    margin-bottom: 10px;
+  }
+  .header-actions {
+    order: 2;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }
 .settings-btn, .theme-btn {
     font-size: 1.5em;

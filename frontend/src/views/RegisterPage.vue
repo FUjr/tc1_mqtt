@@ -464,13 +464,28 @@ const doQuickAddMac = () => {
   justify-content: center;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .header-actions {
-  position: absolute;
-  right: 0;
   display: flex;
   gap: 4px;
   align-items: center;
+}
+
+/* Mobile: header wraps to separate line */
+@media (max-width: 600px) {
+  .header-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-bar h1 {
+    margin-bottom: 10px;
+  }
+  .header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }
 .nav-link {
   font-size: 0.9em;
