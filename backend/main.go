@@ -27,6 +27,8 @@ type Config struct {
 	AdminPassword       string     `yaml:"admin_password"`
 	RegisterLevel       int        `yaml:"register_level"`
 	ContactInfo         string     `yaml:"contact_info"`
+	MQTTUri             string     `yaml:"mqtt_uri"`
+	MQTTWSUri           string     `yaml:"mqtt_ws_uri"`
 	SMTP                SMTPConfig `yaml:"smtp"`
 	ListenAddr          string     `yaml:"listen_addr"`
 }
@@ -62,6 +64,14 @@ func main() {
 
 	if err := loadConfig(configPath); err != nil {
 		log.Fatalf("加载配置失败: %v", err)
+	}
+
+	// 从环境变量加载 MQTT URI（优先级高于配置文件）
+	if mqttUri := os.Getenv("MQTT_URI"); mqttUri != "" {
+		cfg.MQTTUri = mqttUri
+	}
+	if mqttWsUri := os.Getenv("MQTT_WS_URI"); mqttWsUri != "" {
+		cfg.MQTTWSUri = mqttWsUri
 	}
 
 	// 确保ACL文件存在

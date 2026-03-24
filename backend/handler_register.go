@@ -43,6 +43,8 @@ func handleRegisterStatus(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]interface{}{
 		"register_level": cfg.RegisterLevel,
 		"contact_info":   cfg.ContactInfo,
+		"mqtt_uri":       cfg.MQTTUri,
+		"mqtt_ws_uri":    cfg.MQTTWSUri,
 	})
 }
 

@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 
 const registerLevel = ref(1)
 const contactInfo = ref('')
+const mqttUri = ref('')
+const mqttWsUri = ref('')
 const loading = ref(false)
 const message = ref('')
 const messageType = ref('')
@@ -31,6 +33,8 @@ onMounted(async () => {
     const data = await res.json()
     registerLevel.value = data.register_level ?? 1
     contactInfo.value = data.contact_info || ''
+    mqttUri.value = data.mqtt_uri || ''
+    mqttWsUri.value = data.mqtt_ws_uri || ''
   } catch (e) {
     console.error('获取注册状态失败', e)
   }
@@ -237,6 +241,8 @@ const doQuickAddMac = () => {
           <li>每个 MAC 地址全局唯一，<strong>不可冲突</strong></li>
           <li>用户名全局唯一，<strong>不可冲突</strong></li>
           <li>维护者有权随时<strong>移除账号</strong></li>
+          <li v-if="mqttUri">MQTT 服务器：<strong>{{ mqttUri }}</strong></li>
+          <li v-if="mqttWsUri">WebSocket 地址：<strong>{{ mqttWsUri }}</strong></li>
           <li v-if="contactInfo">如 MAC 已被添加或需改密码，请联系维护者：<strong>{{ contactInfo }}</strong></li>
         </ul>
       </div>
