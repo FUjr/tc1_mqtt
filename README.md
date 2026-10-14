@@ -6,7 +6,7 @@
 
 - **注册页** (`/register`)：用户自助注册，填写用户名、密码和设备 MAC 地址，后端自动创建 mosquitto 账户并生成 ACL 规则
 - **管理页** (`/admin`)：管理员登录后可增删改用户、手动编辑 ACL 文件、开关注册功能
-- **控制台** (`/`)：原有 MQTT 设备控制台（zTC1 智能插排）
+- **控制台** (`/`)：phicomm 管理终端（TC1 智能插排、M1 空气检测仪、A1 空气净化器）
 - 同一端口通过 nginx 反代 API (`/api`) 和 MQTT WebSocket (`/mqtt`)
 
 ## 目录结构
@@ -72,6 +72,8 @@ acl_path: "/data/acl"
 acl_patterns:                        # %s 替换为 MAC 地址（大小写各一份）
   - "device/ztc1/%s/#"
   - "homeassistant/+/%s/#"
+  - "phicomm/m1/%s/#"
+  - "phicomm/a1/%s/#"
 
 admin_username: "admin"
 admin_password: "your_password"      # 修改此项！
@@ -160,3 +162,20 @@ Vue 使用 History 路由模式，前端页面切换（如直接进入 `/registe
 两个路径都需要纳入 WAF 防护，**缺一不可**：
 - `/api` 被 WAF 拦截 → 前端探测到 → 跳转 `/register`
 - `/register` 触发人机认证 → 通过后 WAF 放行 Cookie → 后续 `/api` 请求正常
+
+## M1 / A1 基础控制
+
+添加设备时手动选择 TC1、M1 或 A1，列表使用 🔌、🌡️、🌬️ 图标区分。旧记录默认按 TC1 处理，TC1 的 v1/v2 选择和原有功能保留。
+
+M1 支持温度、湿度、甲醛、PM2.5 读数及屏幕亮度 0–4；A1 支持开关、风速 0–100%、灯环开关、童锁和灯环常亮。沿用页面原有明暗主题。
+
+M1/A1 仅支持社区固件的**传统主题模式**，请在固件中选用该模式：
+
+- M1：`phicomm/m1/<小写无分隔符MAC>/...`
+- A1：`phicomm/a1/<小写无分隔符MAC>/...`
+
+输入的 MAC 可含冒号或连字符，添加时自动转换。控制命令不保留；在线状态读取设备的 `availability` 消息。
+
+默认后端配置已包含 M1/A1 ACL 模板。已有部署需同步 `acl_patterns`，已有用户需在管理页的 ACL 中补充对应设备规则，例如 `topic readwrite phicomm/m1/aabbccddeeff/#`；修改配置不会自动重写已有用户 ACL。
+
+协议检查：`cd frontend && node --test tests/*.test.js`。

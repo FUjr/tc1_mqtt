@@ -3,6 +3,8 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import mqtt from 'mqtt'
 import MqttConfig from './components/MqttConfig.vue'
 import DeviceControl from './components/DeviceControl.vue'
+import AirDeviceControl from './components/AirDeviceControl.vue'
+import { legacyBase, applyAirMessage, airCommand } from './deviceProtocol.js'
 import ImportExport from './components/ImportExport.vue'
 
 // State
@@ -13,6 +15,8 @@ const selectedMac = ref(null)
 const newMacInput = ref('')
 const deviceList = ref([]) // List of { mac, version } to track
 const newDeviceVersion = ref('v1')
+const newDeviceType = ref('tc1')
+const deviceIcon = (type) => ({ tc1: '🔌', m1: '🌡️', a1: '🌬️' }[type || 'tc1'])
 
 // Local Storage Keys
 const STORAGE_DEVICES = 'ztc1_devices'
@@ -25,9 +29,9 @@ onMounted(() => {
       const parsed = JSON.parse(saved)
       // Migration: old format was plain MAC string array
       if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-        deviceList.value = parsed.map(mac => ({ mac, version: 'v1' }))
+        deviceList.value = parsed.map(mac => ({ mac, type: 'tc1', version: 'v1' }))
       } else {
-        deviceList.value = parsed
+        deviceList.value = parsed.map(entry => ({ ...entry, type: entry.type || 'tc1' }))
       }
     } catch (e) {
       console.error('Failed to load devices', e)
@@ -66,6 +70,7 @@ const connectMqtt = (config) => {
 
     mqttClient.on('message', (topic, message) => {
       const msgStr = message.toString()
+      if (applyAirMessage(deviceList.value, devices, topic, msgStr)) return
       // v2 HA-style topics
       if (topic.startsWith('homeassistant/')) {
         handleV2Message(topic, msgStr)
@@ -112,6 +117,12 @@ const getDeviceVersion = (mac) => {
 
 const subscribeDevice = (entry) => {
   if (!client.value || !connected.value) return
+  if (entry.type === 'm1' || entry.type === 'a1') {
+    client.value.subscribe(`${legacyBase(entry)}/#`, { qos: 1 }, (err, grants) => {
+      if (err || grants?.some(g => g.qos === 128)) console.error('设备订阅失败，请检查 ACL', err)
+    })
+    return
+  }
   const { mac, version } = typeof entry === 'object' ? entry : { mac: entry, version: getDeviceVersion(entry) }
   
   if (version === 'v2') {
@@ -233,13 +244,19 @@ const parseV2SwitchState = (mac, msgStr) => {
 const addDevice = () => {
   let mac = newMacInput.value.trim()
   if (!mac) return
-  mac = newDeviceVersion.value === 'v2' ? mac.toUpperCase() : mac.toLowerCase()
+  if (newDeviceType.value !== 'tc1') {
+    mac = mac.replace(/[:-]/g, '').toLowerCase()
+    if (!/^[0-9a-f]{12}$/.test(mac)) { window.alert('请输入有效的 12 位 MAC 地址'); return }
+  } else {
+    mac = newDeviceVersion.value === 'v2' ? mac.toUpperCase() : mac.toLowerCase()
+  }
   
   if (!deviceList.value.find(d => d.mac === mac)) {
-    const entry = { mac, version: newDeviceVersion.value }
+    const entry = { mac, type: newDeviceType.value, version: newDeviceType.value === 'tc1' ? newDeviceVersion.value : 'legacy' }
     deviceList.value.push(entry)
     if (!devices[mac]) devices[mac] = { mac }
-    devices[mac].version = newDeviceVersion.value
+    devices[mac].version = entry.version
+    devices[mac].type = entry.type
     subscribeDevice(entry)
     if (deviceList.value.length === 1) {
       selectedMac.value = mac
@@ -249,14 +266,16 @@ const addDevice = () => {
 }
 
 const removeDevice = (mac) => {
+  const removed = deviceList.value.find(d => d.mac === mac)
   const idx = deviceList.value.findIndex(d => d.mac === mac)
   if (idx > -1) {
     deviceList.value.splice(idx, 1)
   }
   if (selectedMac.value === mac) {
-    selectedMac.value = deviceList.value[0] || null
+    selectedMac.value = deviceList.value[0]?.mac || null
   }
-  // Optional: Unsubscribe
+  if (removed?.type === 'm1' || removed?.type === 'a1') client.value?.unsubscribe(`${legacyBase(removed)}/#`)
+  delete devices[mac]
 }
 
 const selectDevice = (mac) => {
@@ -266,6 +285,12 @@ const selectDevice = (mac) => {
 const sendCommand = (cmd) => {
     if (!client.value || !connected.value) return
     const mac = cmd.mac
+    const entry = deviceList.value.find(d => d.mac === mac)
+    if (entry?.type === 'm1' || entry?.type === 'a1') {
+      const command = airCommand(entry, cmd)
+      if (command) client.value.publish(command.topic, command.payload, { qos: 1, retain: false })
+      return
+    }
     const topic = `device/ztc1/${mac}/set`
     const version = getDeviceVersion(mac)
     
@@ -283,7 +308,7 @@ const selectedDeviceState = computed(() => {
   if (!selectedMac.value) return null
   const state = devices[selectedMac.value] || { mac: selectedMac.value }
   const entry = deviceList.value.find(d => d.mac === selectedMac.value)
-  if (entry) state.version = entry.version
+  if (entry) { state.version = entry.version; state.type = entry.type || 'tc1' }
   return state
 })
 
@@ -336,7 +361,7 @@ applyTheme(theme.value)
 <template>
   <div class="container">
     <div class="header-bar">
-        <h1>zTC1 管理终端</h1>
+        <h1>phicomm 管理终端</h1>
         <div class="header-actions">
           <router-link to="/register" class="nav-link">注册</router-link>
           <router-link to="/admin" class="nav-link">管理</router-link>
@@ -364,7 +389,10 @@ applyTheme(theme.value)
         
         <div class="add-device" v-if="!sidebarCollapsed">
           <input v-model="newMacInput" placeholder="输入设备MAC地址" @keyup.enter="addDevice">
-          <select v-model="newDeviceVersion" class="version-select" title="主题版本">
+          <select v-model="newDeviceType" class="version-select" title="设备类型">
+            <option value="tc1">TC1</option><option value="m1">M1</option><option value="a1">A1</option>
+          </select>
+          <select v-if="newDeviceType === 'tc1'" v-model="newDeviceVersion" class="version-select" title="主题版本">
             <option value="v1">v1</option>
             <option value="v2">v2</option>
           </select>
@@ -380,13 +408,13 @@ applyTheme(theme.value)
           >
             <div class="device-item-row">
               <span class="device-name">
-                {{ devices[entry.mac]?.deviceName || devices[entry.mac]?.name || entry.mac }}
+                {{ deviceIcon(entry.type) }} {{ devices[entry.mac]?.deviceName || devices[entry.mac]?.name || entry.mac }}
               </span>
-              <span class="version-badge">{{ entry.version }}</span>
+              <span class="version-badge">{{ (entry.type || 'tc1').toUpperCase() }}{{ (!entry.type || entry.type === 'tc1') ? ` ${entry.version}` : '' }}</span>
               <button class="del-btn" @click.stop="removeDevice(entry.mac)">×</button>
             </div>
             <div class="device-status">
-               {{ (devices[entry.mac]?.available === false) ? '离线' : (devices[entry.mac]?.power ? `${devices[entry.mac].power}W` : '在线') }}
+               {{ (devices[entry.mac]?.available === false) ? '离线' : (!devices[entry.mac] || (entry.type !== 'tc1' && entry.type && devices[entry.mac]?.available !== true) ? '等待状态' : (devices[entry.mac]?.power ? `${devices[entry.mac].power}W` : '在线')) }}
             </div>
           </li>
         </ul>
@@ -399,14 +427,15 @@ applyTheme(theme.value)
                 @click="selectDevice(entry.mac)"
                 :title="devices[entry.mac]?.deviceName || devices[entry.mac]?.name || entry.mac"
             >
-                {{ (devices[entry.mac]?.deviceName || devices[entry.mac]?.name || entry.mac).slice(-2) }}
+                {{ deviceIcon(entry.type) }}
             </div>
         </div>
       </div>
 
       <div class="content-area">
+        <AirDeviceControl v-if="selectedDeviceState && ['m1', 'a1'].includes(selectedDeviceState.type)" :key="selectedMac" :device="selectedDeviceState" @send-cmd="sendCommand" />
         <DeviceControl 
-          v-if="selectedDeviceState" 
+          v-else-if="selectedDeviceState"
           :device="selectedDeviceState" 
           @send-cmd="sendCommand"
         />

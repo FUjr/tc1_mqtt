@@ -8,6 +8,8 @@ acl_path: "/data/acl"                              # ACL文件路径（Docker挂
 acl_patterns:
   - "device/ztc1/%s/#"
   - "homeassistant/+/%s/#"
+  - "phicomm/m1/%s/#"
+  - "phicomm/a1/%s/#"
 
 # Web管理配置
 admin_username: "admin"
