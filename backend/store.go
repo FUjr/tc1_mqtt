@@ -66,6 +66,13 @@ func macExists(mac string) bool {
 	return strings.Contains(content, clean)
 }
 
+// deviceACLPatterns preserves custom rules and supports deployments with older
+// bind-mounted configuration files that predate M1/A1 support.
+func deviceACLPatterns() []string {
+	patterns := append([]string(nil), cfg.ACLPatterns...)
+	return append(patterns, "phicomm/m1/%s/#", "phicomm/a1/%s/#")
+}
+
 // 添加ACL规则
 // mac 已由 normalizeMAC 标准化为 AA:BB:CC:DD:EE:FF 格式
 func addACLRules(username, mac string) error {
@@ -83,7 +90,7 @@ func addACLRules(username, mac string) error {
 	var rules strings.Builder
 	rules.WriteString(fmt.Sprintf("\nuser %s\n", username))
 
-	for _, pattern := range cfg.ACLPatterns {
+	for _, pattern := range deviceACLPatterns() {
 		for _, v := range variants {
 			topic := fmt.Sprintf(pattern, v)
 			if _, exists := seen[topic]; !exists {
@@ -280,7 +287,7 @@ func appendACLRules(username, mac string) error {
 
 	seen := make(map[string]struct{})
 	var rules strings.Builder
-	for _, pattern := range cfg.ACLPatterns {
+	for _, pattern := range deviceACLPatterns() {
 		for _, v := range variants {
 			topic := fmt.Sprintf(pattern, v)
 			if _, exists := seen[topic]; !exists {

@@ -176,6 +176,6 @@ M1/A1 仅支持社区固件的**传统主题模式**，请在固件中选用该�
 
 输入的 MAC 可含冒号或连字符，添加时自动转换。控制命令不保留；在线状态读取设备的 `availability` 消息。
 
-默认后端配置已包含 M1/A1 ACL 模板。已有部署需同步 `acl_patterns`，已有用户需在管理页的 ACL 中补充对应设备规则，例如 `topic readwrite phicomm/m1/aabbccddeeff/#`；修改配置不会自动重写已有用户 ACL。
+后端注册和追加 MAC 时自动补齐该 MAC 的 M1/A1 传统主题 ACL，即使挂载的是只有 TC1 模板的旧配置也能生效，并保留自定义模板。已存在的 MAC 不会自动重写 ACL，需在管理页补充对应规则，例如 `topic readwrite phicomm/m1/aabbccddeeff/#`。
 
 协议检查：`cd frontend && node --test tests/*.test.js`。
